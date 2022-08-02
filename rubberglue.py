@@ -13,9 +13,7 @@ MAX_LEN = 4096
 
 def parse_input_string_to_hash(s):
 	"""This function handles inputs to the hashing function for py2 and 3."""
-	if six.PY2:
-		return str(s)
-	return s.encode()
+	return str(s) if six.PY2 else s.encode()
 
 class Core(object):
 	def __init__(self, logfile, syslog=False, cap=False):
@@ -27,18 +25,16 @@ class Core(object):
 			os.makedirs('./capture')
 		
 	def logg(self, msg):
-		fi = open(self.logfile, 'a')
-		fi.write('{time}; {msg} \n'.format(msg=msg, time=time.strftime('%H:%M:%S %m/%d/%Y')))
-		fi.close()
+		with open(self.logfile, 'a') as fi:
+			fi.write('{time}; {msg} \n'.format(msg=msg, time=time.strftime('%H:%M:%S %m/%d/%Y')))
 	
 	def make_hash(self, data):
 		return hashlib.sha1(parse_input_string_to_hash(data)).hexdigest()
 
 	def capture(self, tag, data):
-		if not self.cap == False:
-			fi = open(r'capture/{tag}'.format(tag=str(tag)), 'a')
-			fi.write(str(data))
-			fi.close()
+		if self.cap != False:
+			with open(r'capture/{tag}'.format(tag=str(tag)), 'a') as fi:
+				fi.write(str(data))
 
 class Forwarder(asyncore.dispatcher, object):
 	def __init__(self, ip, port, backlog=5):
@@ -75,7 +71,7 @@ class Receiver(asyncore.dispatcher, object):
 	def handle_read(self):
 		read = self.recv(MAX_LEN)
 		self.from_remote_buffer += str(read)
-		if not read == None:
+		if read is not None:
 			instance.capture(self.tag, read)
 
 	def writable(self):
@@ -114,7 +110,7 @@ class Sender(asyncore.dispatcher, object):
 	def handle_read(self):
 		read = self.recv(MAX_LEN)
 		self.Receiver.to_remote_buffer += read
-		if not read == None:
+		if read is not None:
 			instance.capture(self.tag, str(read))
 
 	def writable(self):
